@@ -1,5 +1,6 @@
 from typing import Optional, Union
 import torch
+import torch.nn.functional as F
 from tqdm import tqdm
 from torchvision.utils import make_grid
 from PIL import Image
@@ -15,16 +16,17 @@ def load_yaml(yml_path: Union[Path, str], encoding="utf-8"):
         return cfg
 
 
-def train_one_epoch(trainer, loader, optimizer, device, epoch):
+def train_one_epoch(trainer, loader, optimizer, device, epoch, num_classes):
     trainer.train()
     total_loss, total_num = 0., 0
 
     with tqdm(loader, dynamic_ncols=True, colour="#ff924a") as data:
-        for images, _ in data:
+        for images, labels in data:
             optimizer.zero_grad()
 
             x_0 = images.to(device)
-            loss = trainer(x_0)
+            y = F.one_hot(labels.to(device=device, dtype=torch.long), num_classes=num_classes).float()
+            loss = trainer(x_0, y)
 
             loss.backward()
             optimizer.step()

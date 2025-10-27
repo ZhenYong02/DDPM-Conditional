@@ -35,7 +35,7 @@ class GaussianDiffusionTrainer(nn.Module):
         self.register_buffer("signal_rate", torch.sqrt(alpha_t_bar))
         self.register_buffer("noise_rate", torch.sqrt(1.0 - alpha_t_bar))
 
-    def forward(self, x_0):
+    def forward(self, x_0, y_onehot):
         # get a random training step $t \sim Uniform({1, ..., T})$
         t = torch.randint(self.T, size=(x_0.shape[0],), device=x_0.device)
 
@@ -45,7 +45,7 @@ class GaussianDiffusionTrainer(nn.Module):
         # predict the noise added from $x_{t-1}$ to $x_t$
         x_t = (extract(self.signal_rate, t, x_0.shape) * x_0 +
                extract(self.noise_rate, t, x_0.shape) * epsilon)
-        epsilon_theta = self.model(x_t, t)
+        epsilon_theta = self.model(x_t, t, y_onehot)
 
         # get the gradient
         loss = F.mse_loss(epsilon_theta, epsilon, reduction="none")
@@ -72,11 +72,11 @@ class DDPMSampler(nn.Module):
         self.register_buffer("posterior_variance", self.beta_t * (1.0 - alpha_t_bar_prev) / (1.0 - alpha_t_bar))
 
     @torch.no_grad()
-    def cal_mean_variance(self, x_t, t):
+    def cal_mean_variance(self, x_t, t, y_onehot):
         """
         Calculate the mean and variance for $q(x_{t-1} | x_t, x_0)$
         """
-        epsilon_theta = self.model(x_t, t)
+        epsilon_theta = self.model(x_t, t, y_onehot)
         mean = extract(self.coeff_1, t, x_t.shape) * x_t - extract(self.coeff_2, t, x_t.shape) * epsilon_theta
 
         # var is a constant
@@ -85,12 +85,12 @@ class DDPMSampler(nn.Module):
         return mean, var
 
     @torch.no_grad()
-    def sample_one_step(self, x_t, time_step: int):
+    def sample_one_step(self, x_t, time_step: int, y_onehot):
         """
         Calculate $x_{t-1}$ according to $x_t$
         """
         t = torch.full((x_t.shape[0],), time_step, device=x_t.device, dtype=torch.long)
-        mean, var = self.cal_mean_variance(x_t, t)
+        mean, var = self.cal_mean_variance(x_t, t, y_onehot)
 
         z = torch.randn_like(x_t) if time_step > 0 else 0
         x_t_minus_one = mean + torch.sqrt(var) * z
@@ -101,10 +101,11 @@ class DDPMSampler(nn.Module):
         return x_t_minus_one
 
     @torch.no_grad()
-    def forward(self, x_t, only_return_x_0: bool = True, interval: int = 1):
+    def forward(self, x_t, y_onehot, only_return_x_0: bool = True, interval: int = 1):
         """
         Parameters:
             x_t: Standard Gaussian noise. A tensor with shape (batch_size, channels, height, width).
+            y_onehot: Class-conditional one-hot tensor with shape (batch_size, num_classes).
             only_return_x_0: Determines whether the image is saved during the sampling process. if True,
                 intermediate pictures are not saved, and only return the final result $x_0$.
             interval: This parameter is valid only when `only_return_x_0 = False`. Decide the interval at which
@@ -119,7 +120,7 @@ class DDPMSampler(nn.Module):
         x = [x_t]
         with tqdm(reversed(range(self.T)), colour="#6565b5", total=self.T) as time_steps:
             for time_step in time_steps:
-                x_t = self.sample_one_step(x_t, time_step)
+                x_t = self.sample_one_step(x_t, time_step, y_onehot)
 
                 if not only_return_x_0 and ((self.T - time_step) % interval == 0 or time_step == 0):
                     x.append(torch.clip(x_t, -1.0, 1.0))

@@ -1,3 +1,5 @@
+run_name: "cifar10_cond"
+
 ### model params
 Model:
   in_channels: 3
@@ -9,6 +11,7 @@ Model:
   channel_mult: [1, 2, 2, 2]
   conv_resample: True
   num_heads: 4
+  num_classes: 10
 
 ### dataset params
 Dataset:
@@ -30,7 +33,7 @@ Dataset:
   suffix: ["png", "jpg"]
 
   # parameters for torch.utils.data.DataLoader
-  batch_size: 64
+  batch_size: 256
   shuffle: True
   drop_last: True
   pin_memory: True
@@ -46,17 +49,17 @@ Trainer:
 ### callback params
 Callback:
   # The save path for checkpoint.
-  filepath: "./checkpoint/cifar10.pth"
+  filepath: "./checkpoint/{run_name}.pth"
   # Frequency of checkpoint saving.
   save_freq: 1
 
 ### train params
 device: "cuda:0"
-epochs: 1000
+epochs: 300
 # Whether to continue training, True or False
 consume: False
 # If continue training, which checkpoint to load
-consume_path: "./checkpoint/cifar10.pth"
+consume_path: "./checkpoint/{run_name}.pth"
 
 ### optimizer params
-lr: 0.0002
+lr: 0.0003

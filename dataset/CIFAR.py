@@ -8,7 +8,7 @@ def create_cifar10_dataset(data_path, batch_size, **kwargs):
     download = kwargs.get("download", True)
 
     dataset = CIFAR10(root=data_path, train=train, download=download, transform=transforms.Compose([
-        transforms.RandomHorizontalFlip(p=0.5),
+        transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ]))

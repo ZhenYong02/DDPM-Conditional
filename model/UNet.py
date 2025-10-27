@@ -156,16 +156,18 @@ class Downsample(nn.Module):
 # The full UNet model with attention and timestep embedding
 class UNet(nn.Module):
     def __init__(
-            self,
-            in_channels=3,
-            model_channels=128,
-            out_channels=3,
-            num_res_blocks=2,
-            attention_resolutions=(8, 16),
-            dropout=0,
-            channel_mult=(1, 2, 2, 2),
-            conv_resample=True,
-            num_heads=4
+        self,
+        in_channels=3,
+        model_channels=128,
+        out_channels=3,
+        num_res_blocks=2,
+        attention_resolutions=(8, 16),
+        dropout=0,
+        channel_mult=(1, 2, 2, 2),
+        conv_resample=True,
+        num_heads=4,
+        num_classes=10              # NEW: CIFAR-10
+        # class_mlp_layers=1           # NEW: 1 or 2; you asked "one or two"
     ):
         super().__init__()
 
@@ -187,6 +189,15 @@ class UNet(nn.Module):
             nn.Linear(time_embed_dim, time_embed_dim),
         )
 
+        self.class_embed = nn.Sequential(
+            nn.Linear(num_classes, time_embed_dim)
+        )
+
+        self.cond_fuse = nn.Sequential(
+            nn.SiLU(),
+            nn.Linear(time_embed_dim * 2, time_embed_dim)
+        )
+       
         # down blocks
         self.down_blocks = nn.ModuleList([
             TimestepEmbedSequential(nn.Conv2d(in_channels, model_channels, kernel_size=3, padding=1))
@@ -242,26 +253,32 @@ class UNet(nn.Module):
             nn.Conv2d(model_channels, out_channels, kernel_size=3, padding=1),
         )
 
-    def forward(self, x, timesteps):
-        """
-        Apply the model to an input batch.
-        :param x: an [N x C x H x W] Tensor of inputs.
-        :param timesteps: a 1-D batch of timesteps.
-        :return: an [N x C x ...] Tensor of outputs.
-        """
+    def forward(self, x, timesteps, y_onehot):
         hs = []
-        # time step embedding
-        emb = self.time_embed(timestep_embedding(timesteps, self.model_channels))
 
-        # down stage
+        # 1) Time embedding
+        t_emb = timestep_embedding(timesteps, self.model_channels)  # [N, C0]
+        t_emb = self.time_embed(t_emb)                               # [N, 4*C0]
+
+        # 2) Class embedding
+        c_emb = self.class_embed(y_onehot)                           # [N, 4*C0]
+
+        # 3) Fuse into a single conditional embedding
+        emb = self.cond_fuse(torch.cat([t_emb, c_emb], dim=1))       # [N, 4*C0]
+
+        # 4) Down path
         h = x
         for module in self.down_blocks:
-            h = module(h, emb)
+            h = module(h, emb)   # <--- emb is used here
             hs.append(h)
-        # middle stage
+
+        # 5) Middle
         h = self.middle_block(h, emb)
-        # up stage
+
+        # 6) Up path
         for module in self.up_blocks:
             cat_in = torch.cat([h, hs.pop()], dim=1)
-            h = module(cat_in, emb)
+            h = module(cat_in, emb)  # <--- and here
+
+        # 7) Output
         return self.out(h)

@@ -1,0 +1,22 @@
+# Generated documentation and agent guides
+AGENTS.md
+CLAUDE.md
+
+# Large artifacts (store externally / via LFS)
+checkpoint/
+data/
+logs/
+results/
+
+# Python cache artifacts
+__pycache__/
+*.py[cod]
+*.so
+
+# Editor and environment files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+.env
