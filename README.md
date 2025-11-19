@@ -1,6 +1,6 @@
 # DDPM Image Generation - Inference Guide
 
-PyTorch implementation of Denoising Diffusion Probabilistic Models (DDPM) for class-conditional image generation on CIFAR-10. This repository supports three conditioning methods with pre-trained models ready for inference.
+PyTorch implementation of Denoising Diffusion Probabilistic Models (DDPM) for image generation on CIFAR-10. This repository supports both unconditional generation and three class-conditional methods with pre-trained models ready for inference.
 
 ## Quick Start
 
@@ -9,9 +9,9 @@ PyTorch implementation of Denoising Diffusion Probabilistic Models (DDPM) for cl
 **Local Setup:**
 ```bash
 git clone <repo-url>
-cd diffusion-DDPM-pytorch
-conda create -n ddpm python=3.10 -y
-conda activate ddpm
+cd DDPM-Conditional
+conda create -n nodeenv python=3.13 -y
+conda activate nodeenv
 pip install -r requirements.txt
 ```
 
@@ -24,8 +24,15 @@ conda activate nodeenv
 
 ### 2. Generate Images
 
-Use the unified generation script that supports all three conditioning methods:
+**Unconditional Generation:**
+```bash
+python generate_unconditioned.py \
+    --checkpoint checkpoint/cifar10.pth \
+    --output_dir result_for_eval/uncond \
+    --num_images 200
+```
 
+**Conditional Generation:**
 ```bash
 python generate_conditioned.py \
     --method <METHOD> \
@@ -34,9 +41,23 @@ python generate_conditioned.py \
     --images_per_class 20
 ```
 
-## Conditioning Methods
+## Generation Methods
 
-This repository implements three different conditioning approaches:
+This repository implements unconditional and three different class-conditional approaches:
+
+### 0. Unconditional Generation
+Pure DDPM generation without class labels.
+- **Model**: `UNet` (unconditional)
+- **Checkpoint**: `checkpoint/cifar10.pth`
+- **Usage**:
+```bash
+python generate_unconditioned.py \
+    --checkpoint checkpoint/cifar10.pth \
+    --output_dir result_for_eval/uncond \
+    --num_images 200
+```
+
+## Conditional Methods
 
 ### 1. Time Embedding Conditioning
 Class information embedded at the timestep level.
@@ -95,7 +116,29 @@ python generate_conditioned.py \
 
 ## SLURM Batch Generation
 
-For HPC environments, use the provided SLURM script:
+For HPC environments, use the provided SLURM scripts:
+
+### Unconditional Generation
+
+**Edit `generate_eval_uncond.sh`:**
+```bash
+CHECKPOINT="checkpoint/cifar10.pth"
+NUM_IMAGES=200            # Total number of images
+OUTPUT_DIR="result_for_eval/uncond"
+DEVICE="cuda"
+```
+
+**Submit job:**
+```bash
+sbatch generate_eval_uncond.sh
+```
+
+**Monitor:**
+```bash
+tail -f logs/ddpm_gen_uncond_<JOBID>.out
+```
+
+### Conditional Generation
 
 **Edit `generate_eval.sh`:**
 ```bash
@@ -115,17 +158,17 @@ sbatch generate_eval.sh
 tail -f logs/ddpm_gen_eval_<JOBID>.out
 ```
 
-The script automatically:
-- Selects the correct checkpoint based on METHOD
-- Sets output directory (`result_for_eval/{method}` or `result_for_eval/cfg_w{scale}`)
-- Activates conda environment
-- Checks GPU status
-- Generates images for all 10 CIFAR-10 classes
-- Records timing and job statistics
+The scripts automatically:
+- Select the correct checkpoint based on METHOD (for conditional)
+- Set output directory
+- Activate conda environment (`nodeenv`)
+- Check GPU status
+- Generate images
+- Record timing and job statistics
 
 ## CIFAR-10 Classes
 
-Generated images will be saved for these classes:
+Conditional generation produces images for these 10 classes:
 - airplane
 - automobile
 - bird
@@ -139,11 +182,18 @@ Generated images will be saved for these classes:
 
 ## Output Format
 
-Images are saved with the naming convention: `{class_name}{index}.png`
+**Unconditional**: Images saved as `image{index}.png` (e.g., `image1.png`, `image2.png`, ...)
+
+**Conditional**: Images saved as `{class_name}{index}.png` (e.g., `airplane1.png`, `cat5.png`, ...)
 
 **Example output structure:**
 ```
 result_for_eval/
+├── uncond/
+│   ├── image1.png
+│   ├── image2.png
+│   ├── ...
+│   └── image200.png
 ├── time/
 │   ├── airplane1.png
 │   ├── airplane2.png
@@ -159,12 +209,24 @@ result_for_eval/
 
 ## Command-Line Arguments
 
-### Required Arguments
+### Unconditional Generation (`generate_unconditioned.py`)
+
+**Required:**
+- `--checkpoint`: Path to model checkpoint file
+- `--output_dir`: Output directory for generated images
+
+**Optional:**
+- `--num_images`: Total number of images to generate (default: 200)
+- `--device`: Device to use (`cuda` or `cpu`, default: `cuda`)
+
+### Conditional Generation (`generate_conditioned.py`)
+
+**Required:**
 - `--method`: Conditioning method (`time`, `input`, or `cfg`)
 - `--checkpoint`: Path to model checkpoint file
 - `--output_dir`: Output directory for generated images
 
-### Optional Arguments
+**Optional:**
 - `--images_per_class`: Number of images per class (default: 20)
 - `--guidance_scale`: CFG guidance scale, only for `--method cfg` (default: 3.0)
 - `--device`: Device to use (`cuda` or `cpu`, default: `cuda`)
@@ -173,6 +235,7 @@ result_for_eval/
 
 | Checkpoint | Method | Size | Description |
 |------------|--------|------|-------------|
+| `cifar10.pth` | unconditional | 429 MB | Pure DDPM (no class conditioning) |
 | `cifar10_cond.pth` | time | 416 MB | Time embedding conditioning |
 | `cifar10_cond_at_input.pth` | input | 410 MB | Input channel conditioning |
 | `cifar10_cfg.pth` | cfg | 416 MB | Classifier-Free Guidance |
@@ -180,6 +243,17 @@ result_for_eval/
 ## Advanced Usage
 
 ### CPU Generation
+
+**Unconditional:**
+```bash
+python generate_unconditioned.py \
+    --checkpoint checkpoint/cifar10.pth \
+    --output_dir results/cpu_gen \
+    --num_images 50 \
+    --device cpu
+```
+
+**Conditional:**
 ```bash
 python generate_conditioned.py \
     --method cfg \
@@ -209,29 +283,36 @@ All models use a U-Net backbone with:
 - **Channels**: 3 (RGB)
 - **Diffusion Steps**: 1000 (T=1000)
 - **Beta Schedule**: Linear from 1e-4 to 0.02
-- **Classes**: 10 (CIFAR-10 categories)
 
 ### Architecture Variants
 
-1. **UNet_emb_at_time**: Time and class embeddings combined at timestep level
-2. **UNet_emb_at_input**: Class embedding concatenated with input channels
-3. **CFG-trained UNet_emb_at_time**: Trained with unconditional dropout for guidance
+1. **UNet** (unconditional): Pure DDPM with only timestep embeddings
+2. **UNet_emb_at_time**: Time and class embeddings combined at timestep level
+3. **UNet_emb_at_input**: Class embedding concatenated with input channels
+4. **CFG-trained UNet_emb_at_time**: Trained with unconditional dropout for guidance
 
 ## Repository Structure
 
 ```
-diffusion-DDPM-pytorch/
-├── generate_conditioned.py      # Unified generation script
-├── generate_eval.sh             # SLURM batch generation script
+DDPM-Conditional/
+├── generate_unconditioned.py    # Unconditional generation script
+├── generate_conditioned.py      # Conditional generation script
+├── generate_eval_uncond.sh      # SLURM script for unconditional generation
+├── generate_eval.sh             # SLURM script for conditional generation
 ├── checkpoint/                  # Pre-trained model checkpoints
-│   ├── cifar10_cond.pth
-│   ├── cifar10_cond_at_input.pth
-│   └── cifar10_cfg.pth
+│   ├── cifar10.pth             # Unconditional model
+│   ├── cifar10_cond.pth        # Time embedding
+│   ├── cifar10_cond_at_input.pth  # Input channel
+│   └── cifar10_cfg.pth         # CFG
+├── model_uncond/
+│   └── UNet.py                 # Unconditional architecture
 ├── model/
 │   ├── UNet_emb_at_time.py     # Time embedding architecture
 │   └── UNet_emb_at_input.py    # Input channel architecture
+├── utils_uncond/
+│   └── engine.py               # Unconditional DDPM sampler
 ├── utils/
-│   ├── engine.py               # Standard DDPM sampler
+│   ├── engine.py               # Conditional DDPM sampler
 │   └── engine_cfg.py           # CFG-enabled sampler
 ├── training/                   # Training scripts (separate documentation)
 └── result_for_eval/            # Generated images output
@@ -240,8 +321,13 @@ diffusion-DDPM-pytorch/
 ## Troubleshooting
 
 ### CUDA Out of Memory
-Reduce batch size or use CPU:
+Use CPU instead:
 ```bash
+# Unconditional
+python generate_unconditioned.py --checkpoint checkpoint/cifar10.pth \
+    --output_dir results --num_images 10 --device cpu
+
+# Conditional
 python generate_conditioned.py --method cfg --checkpoint checkpoint/cifar10_cfg.pth \
     --output_dir results --images_per_class 1 --device cpu
 ```
@@ -253,6 +339,13 @@ Ensure checkpoint files are in the `checkpoint/` directory and paths are correct
 Make sure all dependencies are installed:
 ```bash
 pip install torch torchvision tqdm pillow pyyaml
+```
+
+### Module Import Errors
+If you get import errors for `model_uncond` or `utils_uncond`, ensure you're running from the project root directory:
+```bash
+cd /home/msai/zhenyong001/DDPM-Conditional
+python generate_unconditioned.py --checkpoint checkpoint/cifar10.pth --output_dir results --num_images 10
 ```
 
 ## Credits
