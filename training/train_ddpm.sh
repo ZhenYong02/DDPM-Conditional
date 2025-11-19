@@ -6,8 +6,8 @@
 #SBATCH --gres=gpu:1
 #SBATCH --mem=30G
 #SBATCH --job-name=ddmp_train
-#SBATCH --output=logs/ddpm_train_%j.out
-#SBATCH --error=logs/ddpm_train_%j.err
+#SBATCH --output=logs/ddpm_train_%j_(input).out
+#SBATCH --error=logs/ddpm_train_%j_(input).err
 #SBATCH --time=06:00:00
 
 # Create logs and checkpoint directories

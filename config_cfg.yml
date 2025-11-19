@@ -1,4 +1,4 @@
-run_name: "cifar10_cond_at_time_cfg"
+run_name: "cifar10_cfg"
 
 ### model params
 Model:
@@ -11,7 +11,7 @@ Model:
   channel_mult: [1, 2, 2, 2]
   conv_resample: True
   num_heads: 4
-  num_classes: 10
+  num_classes: 10  # 10 CIFAR-10 classes (null class = all zeros)
 
 ### dataset params
 Dataset:
@@ -45,6 +45,42 @@ Trainer:
   T: 1000
   beta: [0.0001, 0.02]
 
+### ===================================================================
+### CFG (Classifier-Free Guidance) Parameters
+### ===================================================================
+# Probability of dropping class conditioning during training (p_cfg)
+#
+# This determines how often the model sees unconditional samples (null embedding).
+# During training, with probability cfg_dropout_prob, the class embedding is
+# replaced with all zeros [0, 0, ..., 0].
+#
+# Typical values:
+#   - 0.1 (10%):  Standard CFG training, good balance
+#   - 0.15 (15%): More unconditional training, stronger guidance capability
+#   - 0.2 (20%):  High dropout, may weaken pure conditional performance
+#
+# Recommended: Start with 0.1 and increase if you need stronger CFG
+cfg_dropout_prob: 0.1
+
+# Default guidance scale for generation (w)
+#
+# This controls the strength of classifier-free guidance during sampling.
+# Formula: ε_guided = ε_uncond + w * (ε_cond - ε_uncond)
+#
+# Guidance scale values:
+#   - 0.0:     Pure unconditional (ignores class labels)
+#   - 1.0:     Pure conditional (standard DDPM, no guidance)
+#   - 2.0-3.0: Mild guidance (slight quality improvement)
+#   - 3.0-5.0: Moderate guidance (good balance) ← RECOMMENDED
+#   - 5.0-7.0: Strong guidance (better quality, less diversity)
+#   - 7.0-10.0: Very strong guidance (may cause artifacts)
+#   - 10.0+:   Extreme guidance (likely to cause artifacts)
+#
+# Note: This is just the default value. You can override it via command-line
+# in generate_cfg.py using the --guidance_scale parameter.
+#
+# Recommended: Start with 3.0 for CIFAR-10
+guidance_scale: 3.0
 
 ### callback params
 Callback:

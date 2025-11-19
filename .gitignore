@@ -7,6 +7,9 @@ checkpoint/
 data/
 logs/
 results/
+archive/
+result_and_script_for_eval/
+result_for_eval/
 
 # Python cache artifacts
 __pycache__/
