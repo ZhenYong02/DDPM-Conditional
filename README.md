@@ -270,8 +270,7 @@ DDPM-Conditional/
 │   ├── accuracy_logit_IS.ipynb # IS, Accuracy, Logit Score
 │   └── fid.ipynb               # Fréchet Inception Distance
 ├── training_loss_curve/        # Training loss visualization
-│   └── plot_loss_curve.ipynb   # Plot training loss curves
-└── result_for_eval/            # Generated images output
+    └── plot_loss_curve.ipynb   # Plot training loss curves
 ```
 
 ## Credits
