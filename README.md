@@ -57,6 +57,8 @@ python generate_unconditioned.py \
     --num_images 200
 ```
 
+**Note on Unconditional Training**: While unconditional generation is supported with the pre-trained `cifar10.pth` checkpoint, this repository does **not provide training scripts for unconditional models**. For training unconditional CIFAR-10 DDPM from scratch, please refer to the original [Alokia/diffusion-DDPM-pytorch](https://github.com/Alokia/diffusion-DDPM-pytorch) implementation.
+
 ## Conditional Methods
 
 ### 1. Time Embedding Conditioning
@@ -233,6 +235,11 @@ result_for_eval/
 
 ## Available Checkpoints
 
+Pre-trained model checkpoints can be downloaded from:
+**[Download Checkpoints (OneDrive)](https://entuedu-my.sharepoint.com/:f:/g/personal/zhenyong001_e_ntu_edu_sg/IgAAlnKx7_qTSaI3_YrjpbhwARCGR3s8653Z3zEf-OdJPe4?e=gtdssQ)**
+
+Place downloaded checkpoints in the `checkpoint/` directory.
+
 | Checkpoint | Method | Size | Description |
 |------------|--------|------|-------------|
 | `cifar10.pth` | unconditional | 429 MB | Pure DDPM (no class conditioning) |
@@ -276,6 +283,55 @@ for scale in 1.0 3.0 5.0 7.0 10.0; do
 done
 ```
 
+## Evaluation Metrics
+
+The `evaluation/` folder contains Jupyter notebooks for computing generation quality metrics:
+
+### Available Metrics
+
+1. **Inception Score (IS)** - Measures quality and diversity
+2. **Fréchet Inception Distance (FID)** - Measures similarity to real data distribution
+3. **Classification Accuracy** - Tests if generated images are recognizable
+4. **Logit Score** - Measures confidence of classifier predictions
+
+### Notebooks
+
+- **`accuracy_logit_IS.ipynb`**: Computes Inception Score, Classification Accuracy, and Logit Score
+- **`fid.ipynb`**: Computes Fréchet Inception Distance
+
+### Sample Generated Images
+
+For testing the evaluation notebooks, sample generated images can be downloaded from:
+**[Download Sample Images (OneDrive)](https://entuedu-my.sharepoint.com/:f:/g/personal/zhenyong001_e_ntu_edu_sg/IgByeF_iG1jHRoe9Myq4vO3lAQbvLFrboYQCcrjbpNGnlBk?e=LO5w4B)**
+
+⚠️ **Important Note on Sample Images**: These are **small sample sets** provided for testing the evaluation pipeline, **NOT** the full 10k images used to calculate and report metrics in research. For **reliable and publishable metrics**, you should generate and evaluate **10,000 to 50,000 images** for CIFAR-10. Using fewer images will result in high variance and unreliable metric estimates.
+
+### Usage
+
+**Important**: Before running the notebooks, you must **edit the directory paths** inside the notebook code to point to your generated images and real CIFAR-10 data.
+
+```bash
+# Open notebooks in Jupyter
+jupyter notebook evaluation/accuracy_logit_IS.ipynb
+jupyter notebook evaluation/fid.ipynb
+```
+
+**Steps:**
+1. Generate images using one of the generation methods (recommended: 10k-50k images for reliable metrics)
+2. Open the appropriate evaluation notebook
+3. **Edit the directory paths** in the notebook to match your setup:
+   - Path to generated images (e.g., `result_for_eval/cfg_w3.0/`)
+   - Path to real CIFAR-10 dataset (e.g., `./data/cifar-10-batches-py/`)
+4. Run all cells to compute metrics
+5. Compare results across different methods and hyperparameters
+
+### Recommendations for Reliable Metrics
+
+- **FID**: Generate at least 10,000 images (50,000 recommended for publication-quality results)
+- **IS**: Generate at least 10,000 images
+- **Accuracy/Logit**: Generate at least 5,000 images (1,000 minimum for rough estimates)
+- Use the same number of images across all methods for fair comparison
+
 ## Model Architecture
 
 All models use a U-Net backbone with:
@@ -297,8 +353,10 @@ All models use a U-Net backbone with:
 DDPM-Conditional/
 ├── generate_unconditioned.py    # Unconditional generation script
 ├── generate_conditioned.py      # Conditional generation script
-├── generate_eval_uncond.sh      # SLURM script for unconditional generation
-├── generate_eval.sh             # SLURM script for conditional generation
+├── train.py                     # Standard conditional training script
+├── train_cfg.py                 # CFG training script
+├── config.yml                   # Standard training configuration
+├── config_cfg.yml               # CFG training configuration
 ├── checkpoint/                  # Pre-trained model checkpoints
 │   ├── cifar10.pth             # Unconditional model
 │   ├── cifar10_cond.pth        # Time embedding
@@ -313,8 +371,15 @@ DDPM-Conditional/
 │   └── engine.py               # Unconditional DDPM sampler
 ├── utils/
 │   ├── engine.py               # Conditional DDPM sampler
-│   └── engine_cfg.py           # CFG-enabled sampler
-├── training/                   # Training scripts (separate documentation)
+│   ├── engine_cfg.py           # CFG-enabled sampler
+│   └── tools.py, tools_cfg.py  # Training utilities
+├── dataset/                    # Dataset loaders
+│   ├── __init__.py             # Dataset factory
+│   ├── CIFAR.py, MNIST.py      # Dataset implementations
+│   └── Custom.py
+├── evaluation/                 # Evaluation metrics notebooks
+│   ├── accuracy_logit_IS.ipynb # IS, Accuracy, Logit Score
+│   └── fid.ipynb               # Fréchet Inception Distance
 └── result_for_eval/            # Generated images output
 ```
 

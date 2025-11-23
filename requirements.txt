@@ -9,6 +9,11 @@ Pillow==11.1.0
 PyYAML==6.0.2
 numpy==2.1.2
 
+# Evaluation and visualization dependencies
+# Required for evaluation/ and training_loss_curve/ notebooks
+matplotlib>=3.7.0
+clean-fid>=0.1.35
+
 # Optional dependencies (for advanced features)
 # accelerate==1.11.0
 # transformers==4.38.0
