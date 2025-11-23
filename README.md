@@ -87,12 +87,6 @@ To resume training from a checkpoint, set `consume: True` in your config file an
 
 ⚠️ **IMPORTANT**: While this codebase is adapted from [Alokia/diffusion-DDPM-pytorch](https://github.com/Alokia/diffusion-DDPM-pytorch), our modifications and testing are **specifically based on CIFAR-10**. There is **no guarantee** that the code will work perfectly with other datasets (MNIST, custom datasets) supported by the original Alokia implementation.
 
-If using datasets other than CIFAR-10:
-- Adjust `image_size` in config files
-- Modify `num_classes` for different class counts
-- Test thoroughly and adjust hyperparameters as needed
-- Input channel conditioning may require architecture adjustments for non-RGB images
-
 ## Pre-trained Checkpoints
 
 Pre-trained model checkpoints can be downloaded from:
@@ -213,7 +207,7 @@ python generate_conditioned.py \
 For testing the evaluation notebooks, sample generated images can be downloaded from:
 **[Download Sample Images (OneDrive)](https://entuedu-my.sharepoint.com/:f:/g/personal/zhenyong001_e_ntu_edu_sg/IgByeF_iG1jHRoe9Myq4vO3lAQbvLFrboYQCcrjbpNGnlBk?e=LO5w4B)**
 
-⚠️ **Important Note on Sample Images**: These are **small sample sets** provided for testing the evaluation pipeline, **NOT** the full 10k images used to calculate and report metrics in research. For **reliable and publishable metrics**, you should generate and evaluate **10,000 to 50,000 images** for CIFAR-10. Using fewer images will result in high variance and unreliable metric estimates.
+⚠️ **Important Note on Sample Images**: These are **small sample sets** provided for testing the evaluation pipeline, **NOT** the full 10k images used to calculate the metrics in our project report. For **reliable and publishable metrics**, you should generate and evaluate **10,000 to 50,000 images** for CIFAR-10. Using fewer images will result in high variance and unreliable metric estimates.
 
 ## Evaluation Metrics
 
@@ -234,21 +228,6 @@ The `evaluation/` folder contains Jupyter notebooks for computing generation qua
 ### Usage
 
 **Important**: Before running the notebooks, you must **edit the directory paths** inside the notebook code to point to your generated images and real CIFAR-10 data.
-
-```bash
-# Open notebooks in Jupyter
-jupyter notebook evaluation/accuracy_logit_IS.ipynb
-jupyter notebook evaluation/fid.ipynb
-```
-
-**Steps:**
-1. Generate images using one of the generation methods (recommended: 10k-50k images for reliable metrics)
-2. Open the appropriate evaluation notebook
-3. **Edit the directory paths** in the notebook to match your setup:
-   - Path to generated images (e.g., `result_for_eval/cfg_w3.0/`)
-   - Path to real CIFAR-10 dataset (e.g., `./data/cifar-10-batches-py/`)
-4. Run all cells to compute metrics
-5. Compare results across different methods and hyperparameters
 
 ### Recommendations for Reliable Metrics
 
