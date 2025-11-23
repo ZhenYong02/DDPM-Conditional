@@ -354,9 +354,267 @@ python generate_unconditioned.py --checkpoint checkpoint/cifar10.pth --output_di
 - Base implementation inspired by [Alokia/diffusion-DDPM-pytorch](https://github.com/Alokia/diffusion-DDPM-pytorch)
 - Extended with conditional generation and CFG support
 
-## Training Documentation
+## Model Training
 
-Training documentation and scripts are located in the `training/` directory. See separate training guide for model training workflows.
+This repository supports training both standard conditional DDPM models and Classifier-Free Guidance (CFG) models. Training scripts are located in the root directory.
+
+### Training Scripts Overview
+
+| Script | Config File | Purpose | Output |
+|--------|-------------|---------|--------|
+| `train.py` | `config.yml` | Standard conditional training (time/input strategies) | `checkpoint/{run_name}.pth` |
+| `train_cfg.py` | `config_cfg.yml` | CFG training with unconditional dropout | `checkpoint/{run_name}.pth` |
+
+### Standard Conditional Training (`train.py`)
+
+Trains conditional DDPM models using either time embedding or input channel conditioning strategies.
+
+**Configuration (`config.yml`):**
+
+Key parameters to configure:
+
+```yaml
+# Run name for checkpoint file naming
+run_name: "cifar10_cond_at_time_cfg"
+
+# Conditioning Strategy - IMPORTANT!
+# Controls which UNet architecture to use:
+#   "time":  UNet_emb_at_time (class embedding at timestep level)
+#   "input": UNet_emb_at_input (class embedding at input channel level)
+conditioning_strategy: "time"  # Default: "time"
+
+# Model parameters
+Model:
+  in_channels: 3              # RGB channels
+  out_channels: 3
+  model_channels: 128         # Base channel count
+  attention_resolutions: [2]  # Resolutions to apply attention
+  num_res_blocks: 2           # Residual blocks per level
+  dropout: 0.1                # Dropout probability
+  channel_mult: [1, 2, 2, 2]  # Channel multipliers per level
+  num_classes: 10             # CIFAR-10 has 10 classes
+
+# Dataset parameters
+Dataset:
+  dataset: "cifar"            # Options: "mnist", "cifar", "custom"
+  batch_size: 256
+  image_size: [32, 32]        # CIFAR-10 size
+  data_path: "./data"
+  download: True              # Auto-download CIFAR-10
+
+# Diffusion parameters
+Trainer:
+  T: 1000                     # Diffusion timesteps
+  beta: [0.0001, 0.02]        # Linear beta schedule
+
+# Training parameters
+device: "cuda:0"
+epochs: 300                   # Total training epochs
+lr: 0.0003                    # Learning rate (AdamW)
+
+# Checkpoint settings
+Callback:
+  filepath: "./checkpoint/{run_name}.pth"
+  save_freq: 1                # Save every N epochs
+
+# Resume training
+consume: False                # Set to True to resume
+consume_path: "./checkpoint/{run_name}.pth"
+```
+
+**Local Training:**
+```bash
+# Edit config.yml to set conditioning_strategy and other parameters
+python train.py
+```
+
+**HPC/SLURM Training:**
+```bash
+# Create a SLURM script (e.g., train_ddpm.sh)
+sbatch train_ddpm.sh
+```
+
+**Example SLURM script:**
+```bash
+#!/bin/bash
+#SBATCH --partition=MGPU-TC2
+#SBATCH --qos=normal
+#SBATCH --nodes=1
+#SBATCH --gres=gpu:1
+#SBATCH --mem=30G
+#SBATCH --job-name=ddpm_train
+#SBATCH --output=logs/ddpm_train_%j.out
+#SBATCH --error=logs/ddpm_train_%j.err
+#SBATCH --time=06:00:00
+
+mkdir -p logs checkpoint
+
+# HPC setup
+module load anaconda
+eval "$(conda shell.bash hook)"
+conda activate nodeenv
+
+# Run training
+python train.py 2>&1 | tee -a logs/training_detailed.log
+```
+
+**Switching Conditioning Strategies:**
+
+To train with **time embedding** (recommended):
+```yaml
+conditioning_strategy: "time"
+run_name: "cifar10_time_emb"
+```
+
+To train with **input channel** conditioning:
+```yaml
+conditioning_strategy: "input"
+run_name: "cifar10_input_emb"
+```
+
+### CFG Training (`train_cfg.py`)
+
+Trains DDPM models with Classifier-Free Guidance support. Always uses `UNet_emb_at_time` architecture.
+
+**Configuration (`config_cfg.yml`):**
+
+Key CFG-specific parameters:
+
+```yaml
+# Run name
+run_name: "cifar10_cfg"
+
+# CFG-Specific Parameters
+
+# cfg_dropout_prob: Probability of dropping class conditioning during training
+# This enables the model to learn both conditional and unconditional generation
+# Typical values:
+#   0.1 (10%):  Standard CFG training, good balance
+#   0.15 (15%): More unconditional training, stronger guidance
+#   0.2 (20%):  High dropout, may weaken pure conditional performance
+cfg_dropout_prob: 0.1
+
+# guidance_scale: Default guidance scale for generation
+# This is just a default - can be overridden during generation
+# Formula: ε_guided = ε_uncond + w * (ε_cond - ε_uncond)
+# Values:
+#   0.0:     Pure unconditional (ignores class labels)
+#   1.0:     Pure conditional (standard DDPM, no guidance)
+#   3.0-5.0: Moderate guidance (recommended)
+#   5.0-7.0: Strong guidance (better quality, less diversity)
+#   7.0+:    Very strong guidance (may cause artifacts)
+guidance_scale: 3.0
+
+# Model, Dataset, Trainer, and training parameters
+# (Same as config.yml, but conditioning_strategy is NOT used - always uses time embedding)
+```
+
+**Local Training:**
+```bash
+# Edit config_cfg.yml to set cfg_dropout_prob and other parameters
+python train_cfg.py
+```
+
+**HPC/SLURM Training:**
+```bash
+# Create a SLURM script (e.g., train_ddpm_cfg.sh)
+sbatch train_ddpm_cfg.sh
+```
+
+**Example SLURM script for CFG:**
+```bash
+#!/bin/bash
+#SBATCH --partition=MGPU-TC2
+#SBATCH --qos=normal
+#SBATCH --nodes=1
+#SBATCH --gres=gpu:1
+#SBATCH --mem=30G
+#SBATCH --job-name=ddpm_train_cfg
+#SBATCH --output=logs/ddpm_train_cfg_%j.out
+#SBATCH --error=logs/ddpm_train_cfg_%j.err
+#SBATCH --time=06:00:00
+
+mkdir -p logs checkpoint
+
+# HPC setup
+module load anaconda
+eval "$(conda shell.bash hook)"
+conda activate nodeenv
+
+# Run CFG training
+python train_cfg.py 2>&1 | tee -a logs/training_detailed_cfg.log
+```
+
+### Resuming Training
+
+Both training scripts support resuming from checkpoints.
+
+**In `config.yml` or `config_cfg.yml`:**
+```yaml
+consume: True
+consume_path: "./checkpoint/{run_name}.pth"
+```
+
+The checkpoint contains:
+- Model state dict
+- Optimizer state dict
+- Training epoch
+- Full configuration
+- Checkpoint callback state
+
+### Monitoring Training
+
+**Check job status:**
+```bash
+squeue -u zhenyong001
+```
+
+**Monitor training output:**
+```bash
+# Standard training
+tail -f logs/training_detailed.log
+
+# CFG training
+tail -f logs/training_detailed_cfg.log
+```
+
+**Check job efficiency:**
+```bash
+seff <JOB_ID>
+```
+
+### Configuration File Differences
+
+| Parameter | `config.yml` | `config_cfg.yml` | Notes |
+|-----------|--------------|------------------|-------|
+| `conditioning_strategy` | ✅ Required | ❌ Not used | Controls UNet variant for `train.py` only |
+| `cfg_dropout_prob` | ❌ Not used | ✅ Required | CFG-specific: unconditional dropout probability |
+| `guidance_scale` | ❌ Not used | ✅ Required | CFG-specific: default guidance scale for generation |
+| `Model`, `Dataset`, `Trainer` | ✅ | ✅ | Shared parameters |
+
+**Key Differences:**
+- `train.py` uses `conditioning_strategy` to select between `UNet_emb_at_time` and `UNet_emb_at_input`
+- `train_cfg.py` always uses `UNet_emb_at_time` and requires CFG-specific parameters
+- Both use similar model architecture and training hyperparameters
+
+### Training Tips
+
+1. **Start with time embedding**: `conditioning_strategy: "time"` generally performs better
+2. **CFG dropout**: Start with `cfg_dropout_prob: 0.1` (10%) for CFG training
+3. **Batch size**: Reduce if you encounter OOM errors (256 → 128 → 64)
+4. **Learning rate**: 0.0003 works well for CIFAR-10; may need tuning for other datasets
+5. **Epochs**: 300 epochs is recommended for CIFAR-10; convergence typically around epoch 200-250
+6. **Checkpoints**: Save frequently (`save_freq: 1`) to prevent data loss
+
+### Dataset Compatibility Warning
+
+⚠️ **IMPORTANT**: While this codebase is adapted from [Alokia/diffusion-DDPM-pytorch](https://github.com/Alokia/diffusion-DDPM-pytorch), our modifications and testing are **specifically based on CIFAR-10**. There is **no guarantee** that the code will work perfectly with other datasets (MNIST, custom datasets) supported by the original Alokia implementation.
+
+If using datasets other than CIFAR-10:
+- Adjust `image_size` in config files
+- Modify `num_classes` for different class counts
+- Test thoroughly and adjust hyperparameters as needed
+- Input channel conditioning may require architecture adjustments for non-RGB images
 
 ## License
 

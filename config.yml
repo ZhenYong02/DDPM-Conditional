@@ -1,5 +1,13 @@
 run_name: "cifar10_cond_at_time_cfg"
 
+### Conditioning Strategy
+# Determines which UNet architecture to use for conditional training:
+#   - "time":  Uses UNet_emb_at_time (class embedding at timestep level)
+#   - "input": Uses UNet_emb_at_input (class embedding at input channel level)
+#
+# Default: "time" (recommended)
+conditioning_strategy: "time"
+
 ### model params
 Model:
   in_channels: 3
