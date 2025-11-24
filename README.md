@@ -1,6 +1,6 @@
 # DDPM-Conditional: Conditional Diffusion Models for CIFAR-10
 
-PyTorch implementation of Denoising Diffusion Probabilistic Models (DDPM) for CIFAR-10 image generation. This repository supports unconditional generation and three class-conditional methods: time embedding, input channel conditioning, and Classifier-Free Guidance (CFG).
+PyTorch implementation of Denoising Diffusion Probabilistic Models (DDPM) for CIFAR-10 image generation. This repository supports unconditional generation and three class-conditional methods: time embedding, input channel conditioning, and Classifier-Free Guidance (CFG). The GitHub link is https://github.com/ZhenYong02/DDPM-Conditional
 
 ## Environment Setup
 
