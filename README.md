@@ -207,7 +207,7 @@ python generate_conditioned.py \
 For testing the evaluation notebooks, sample generated images can be downloaded from:
 **[Download Sample Images (OneDrive)](https://entuedu-my.sharepoint.com/:f:/g/personal/zhenyong001_e_ntu_edu_sg/IgByeF_iG1jHRoe9Myq4vO3lAQbvLFrboYQCcrjbpNGnlBk?e=LO5w4B)**
 
-⚠️ **Important Note on Sample Images**: These are **small sample sets** provided for testing the evaluation pipeline, **NOT** the full 10k images used to calculate the metrics in our project report. For **reliable and publishable metrics**, you should generate and evaluate **10,000 to 50,000 images** for CIFAR-10. Using fewer images will result in high variance and unreliable metric estimates.
+⚠️ **Important Note on Sample Images**: These are **small sample sets** provided for testing the evaluation pipeline. For **reliable and publishable metrics**, generate and evaluate **10,000 to 50,000 images** for CIFAR-10. Using fewer images will result in high variance and unreliable metric estimates.
 
 ## Evaluation Metrics
 
